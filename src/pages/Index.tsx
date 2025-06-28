@@ -67,22 +67,12 @@ const Index = () => {
     }
     
     if (playlistMatch) {
-      // For demo purposes, returning mock playlist videos
-      return ["dQw4w9WgXcQ", "3tmd-ClpJxA", "kJQP7kiw5Fk"];
+      // Return the playlist ID for backend processing
+      return [playlistMatch[1]];
     }
     
     return [];
   };
-
-  const mockTranscript: TranscriptEntry[] = [
-    { text: "Welcome to this amazing video tutorial", start: 0, duration: 3.5 },
-    { text: "Today we're going to learn about React and modern web development", start: 3.5, duration: 4.2 },
-    { text: "First, let's talk about the fundamentals of component-based architecture", start: 7.7, duration: 5.1 },
-    { text: "React allows us to build reusable UI components that make our code more maintainable", start: 12.8, duration: 6.3 },
-    { text: "We can pass data between components using props and manage state effectively", start: 19.1, duration: 5.8 },
-    { text: "Let's dive into some practical examples to see how this works in action", start: 24.9, duration: 4.7 },
-    { text: "Thank you for watching, and don't forget to subscribe for more content", start: 29.6, duration: 4.2 }
-  ];
 
   const fetchTranscript = async () => {
     if (!url.trim()) {
@@ -103,18 +93,32 @@ const Index = () => {
         throw new Error("Invalid YouTube URL");
       }
 
-      const newVideos: VideoData[] = [];
+      console.log("Fetching transcript for:", url);
       
-      // Mock API calls for demo
-      for (const videoId of videoIds) {
-        await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API delay
-        
-        newVideos.push({
-          id: videoId,
-          title: `Sample Video Title ${videoId.slice(-4)}`,
-          transcript: mockTranscript,
-          url: `https://youtube.com/watch?v=${videoId}`
-        });
+      // Call your backend API
+      const response = await fetch('http://localhost:8000/api/transcript', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          url: url,
+          videoIds: videoIds
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log("Backend response:", data);
+      
+      // Handle the response from your backend
+      const newVideos: VideoData[] = data.videos || [];
+      
+      if (newVideos.length === 0) {
+        throw new Error("No transcript data received from backend");
       }
       
       setVideos(newVideos);
@@ -130,9 +134,10 @@ const Index = () => {
       });
       
     } catch (error) {
+      console.error("Error fetching transcript:", error);
       toast({
         title: "Failed to fetch transcript",
-        description: "Please check the URL and try again",
+        description: error instanceof Error ? error.message : "Please check the URL and try again",
         variant: "destructive",
       });
     } finally {
